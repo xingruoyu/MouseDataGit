@@ -1,0 +1,73 @@
+MouseDataVisualizationApp
+========================================================
+author: R. Xing
+date:4-2-2018 
+autosize: true
+
+Introduction: Mouse Data App
+========================================================
+
+The aim of the app is to create a data visualization platform for my upcoming manuscript.
+In the manuscript we reported the effect of the drug Ivabradine on cardiac parameters, including heart rate, cardiac duration etc.
+
+However, the data presented in the manuscript were mean values based on the entire groups.
+As we observed heterogeneity among individual mice in response to the drug, it was thus necessary to investigate the data of each mouse.
+
+ - You can visit the App via this link: <https://xingruoyu.shinyapps.io/MouseDataVisualizationApp_IvabradineProject/>.
+ - For the Git Repository, you can access via this link: <https://github.com/xingruoyu/MouseDataGit>.
+
+Loading data
+========================================================
+```{r setup environment, include=FALSE}
+directory <-c("E:/Project_03_PCXTM/MouseDataVisualizationApp/MouseDataVisualizationApp_IvabradineProject/data/") 
+library(knitr)
+library(reshape2)
+library(webshot)
+library(shiny)
+library(ggplot2)
+library(gridExtra)
+# create empty lists to store data/figure of each tab ----
+data_all <- list()
+data_reshape <- list()
+plot <- list()
+```
+
+``` {r load data}
+my_sheet <- c("HeartRate", "CardiacDurationSys", "CardiacDurationDia")
+for (i in c(1:3)) {
+      data_all[[i]] <- read.csv(paste0(directory, my_sheet[i],".csv"))
+      data_all[[i]][,1] <- c(1:3,10,11,4,5,12:16,6:9,17,18) # rearrange the mouse numbers
+      data_all[[i]] <- data_all[[i]][order(data_all[[i]]$Mouse_Number),]
+      data_all[[i]]$Iva_Ctrl <- factor(data_all[[i]]$Iva_Ctrl, levels=c(0,1), labels = c("Control Group", "Ivabradine Group"))
+}
+kable(data_all[[1]][1:3,],  row.names = FALSE)
+```
+
+Processing data
+========================================================
+```{r}
+data_reshape <- lapply(data_all, function(y) {
+      y <- melt(y, id.vars = c("Iva_Ctrl", "Mouse_Number"))
+      colnames(y) <- c("Ivabradine", "MouseNumber","TimePoint", "Value")
+      y$MouseNumber <- as.factor(y$MouseNumber)
+      y
+})
+kable(data_reshape[[1]][1:3,],  row.names = FALSE)
+```
+
+Visualizing data
+========================================================
+```{r App, echo = FALSE, fig.width = 20, fig.height = 20}
+for (i in 1:3) {
+      plot[[i]] <- ggplot(data_reshape[[i]], aes(x = TimePoint, y = Value)) +
+            facet_grid(.~Ivabradine) +
+            geom_point(aes(color = MouseNumber, group = MouseNumber), size = 4, na.rm = TRUE) +
+            geom_line(aes(color = MouseNumber, group = MouseNumber), size =1, na.rm = TRUE) +
+            labs(x ="Time Point", y= my_sheet[i]) +
+            theme(plot.title = element_text(size = 20, face="bold")) + # adjust title font size
+            theme(axis.text = element_text(size=16, face="bold"), axis.title=element_text(size=16, face="bold"))+  # adjust axis font size
+            theme(strip.text.x = element_text(size = 16, face="bold")) + # adjust font size subplot title
+            theme(legend.title = element_text(size=16, face="bold") , legend.text=element_text(size=16)) # adjsut legend font size
+}
+grid.arrange(grobs = plot, nrow = 3, ncol = 1)
+```
